@@ -13,7 +13,7 @@ TODAY = date.today().strftime("%Y-%m-%d")
 st.title("Stock Visualizer App")
 
 stocks = (
-    "AAPL", "RELIANCE.NS", "BANKNIFTY1.BO", "HDB", "IBN", "SBIN.NS",
+    "RELIANCE.NS", "BANKNIFTY1.BO", "HDB", "IBN", "SBIN.NS",
     "HINDUNILVR.NS", "INFY", "BAJFINANCE.NS", "LICI.NS", "ITC.NS", "LT.NS",
     "MARUTI.NS", "M&M.NS", "HCLTECH.NS", "KOTAKBANK.NS", "SUNPHARMA.NS",
     "ULTRACEMCO.NS", "AXISBANK.BO", "TITAN.NS", "NTPC.NS", "BAJAJFINSV.NS",
