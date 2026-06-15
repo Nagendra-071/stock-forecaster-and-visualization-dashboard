@@ -16,7 +16,7 @@ st.title("📈 AI-Powered Stock Forecasting & Visualization Dashboard")
 with st.sidebar:
     st.header("Control Panel")
     stocks = (
-        "RELIANCE.NS", "HDB", "IBN", "SBIN.NS",
+         "HDB", "IBN", "SBIN.NS","RELIANCE.NS",
         "HINDUNILVR.NS", "INFY", "BAJFINANCE.NS", "LICI.NS", "ITC.NS", "LT.NS",
         "MARUTI.NS", "M&M.NS", "HCLTECH.NS", "KOTAKBANK.NS", "SUNPHARMA.NS",
         "ULTRACEMCO.NS", "AXISBANK.BO", "TITAN.NS", "NTPC.NS", "BAJAJFINSV.NS",
