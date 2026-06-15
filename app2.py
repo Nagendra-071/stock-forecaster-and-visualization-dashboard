@@ -49,26 +49,19 @@ with st.sidebar:
 @st.cache_data(ttl=3600)
 def load_data(ticker):
     try:
-        data = yf.download(ticker, start=START, end=TODAY, auto_adjust=True)
+        # group_by='ticker' forces predictable structures across single/multiple selections
+        data = yf.download(ticker, start=START, end=TODAY, auto_adjust=True, group_by='ticker')
         
         if data.empty:
             return pd.DataFrame()
 
-        # Fix formatting for MultiIndex / Series returns
-        if isinstance(data, pd.Series):
-            data = data.to_frame()
-            
+        # Safely flatten multi-level column indexing out of the data frame
         if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.get_level_values(0)
-            
-        if 'Close' not in data.columns:
-            if 'Close' in data.index.names:
-                data = data.reset_index()
+            if ticker in data.columns.levels[0]:
+                data = data[ticker]
             else:
-                data = data.copy()
-                data.columns = [str(c) for c in data.columns]
-        
-        # Clean up rows and reset index
+                data.columns = data.columns.get_level_values(0)
+
         data = data.dropna(subset=['Close'])
         data = data.reset_index()
         
@@ -83,7 +76,6 @@ def load_data(ticker):
         else:
             data.rename(columns={data.columns[0]: 'Date'}, inplace=True)
 
-        # Standardize date format & flatten 1D array dimensions
         data['Date'] = pd.to_datetime(data['Date']).dt.tz_localize(None)
         data['Close'] = np.array(data['Close']).flatten()
         
