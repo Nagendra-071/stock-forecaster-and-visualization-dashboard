@@ -7,12 +7,14 @@ from prophet.plot import plot_plotly
 import altair as alt
 import numpy as np
 
+# Config
 START = "2015-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
 
 st.set_page_config(page_title="AI Stock Predictor", layout="wide")
 st.title("📈 AI-Powered Stock Forecasting & Visualization Dashboard")
 
+# Sidebar
 with st.sidebar:
     st.header("Control Panel")
     stocks = (
@@ -43,19 +45,30 @@ with st.sidebar:
     period = n_years * 365
     predict_button = st.button("Generate AI Prediction")
 
+# Fetch Data
 @st.cache_data(ttl=3600)
 def load_data(ticker):
     try:
-        # FIX: Removed the custom requests.Session wrapper entirely.
-        # yfinance will internally manage its required curl_cffi session configuration automatically.
         data = yf.download(ticker, start=START, end=TODAY, auto_adjust=True)
         
         if data.empty:
             return pd.DataFrame()
 
+        # Fix formatting for MultiIndex / Series returns
+        if isinstance(data, pd.Series):
+            data = data.to_frame()
+            
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
+            
+        if 'Close' not in data.columns:
+            if 'Close' in data.index.names:
+                data = data.reset_index()
+            else:
+                data = data.copy()
+                data.columns = [str(c) for c in data.columns]
         
+        # Clean up rows and reset index
         data = data.dropna(subset=['Close'])
         data = data.reset_index()
         
@@ -70,12 +83,16 @@ def load_data(ticker):
         else:
             data.rename(columns={data.columns[0]: 'Date'}, inplace=True)
 
+        # Standardize date format & flatten 1D array dimensions
         data['Date'] = pd.to_datetime(data['Date']).dt.tz_localize(None)
+        data['Close'] = np.array(data['Close']).flatten()
+        
         return data
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+# AI Prophet Model
 @st.cache_data(ttl=3600)
 def get_prediction(df, days):
     df_train = df[['Date', 'Close']].rename(columns={"Date": "ds", "Close": "y"})
@@ -87,12 +104,14 @@ def get_prediction(df, days):
 
 data = load_data(selected_stock)
 
+# Display App
 if data.empty:
-    st.error(f"No data found for {selected_stock}. The API might be rate-limited or the network session failed. Try again later.")
+    st.error(f"No data found for {selected_stock}. The API might be rate-limited. Try again later.")
 else:
     currency_symbol = "₹" if (selected_stock.endswith(".NS") or selected_stock.endswith(".BO")) else "$"
     col_left, col_right = st.columns([3, 1])
 
+    # Left: History Chart
     with col_left:
         st.subheader(f"Historical Price Action: {selected_stock}")
         chart = alt.Chart(data).mark_line(color='#1f77b4').encode(
@@ -102,6 +121,7 @@ else:
         ).properties(height=400).interactive()
         st.altair_chart(chart, use_container_width=True)
 
+    # Right: Metric Blocks
     with col_right:
         st.subheader("Latest Market Data")
         last_price = float(data['Close'].iloc[-1])
@@ -111,21 +131,26 @@ else:
         st.metric("Current Price", f"{currency_symbol}{last_price:.2f}", f"{change:.2f}")
         st.write("Recent Logs", data.tail(5))
 
+    # AI Execution
     if predict_button:
         st.divider()
         with st.spinner("AI is analyzing trends..."):
             model, forecast = get_prediction(data, period)
+            
+            # Forecast Plot
             st.subheader('🚀 Future Forecast Analysis')
             fig1 = plot_plotly(model, forecast)
             fig1.update_layout(title=f"Forecast for {selected_stock} ({n_years} Years)")
             st.plotly_chart(fig1, use_container_width=True)
 
+            # Export Data
             st.subheader("📥 Export Forecast Data")
             csv_data = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(period)
             csv_data.columns = ['Date', 'Predicted_Price', 'Min_Expected', 'Max_Expected']
             csv = csv_data.to_csv(index=False).encode('utf-8')
             st.download_button("Download CSV", data=csv, file_name=f'{selected_stock}_forecast.csv', mime='text/csv')
             
+            # Components Breakdown
             with st.expander("Show AI Logic"):
                 fig2 = model.plot_components(forecast)
                 st.pyplot(fig2)
